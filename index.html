@@ -2,36 +2,40 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>VideoFlow Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoFlow | AI 视频生产力</title>
     <style>
         :root { --primary: #8B5CF6; --bg: #050507; --card: rgba(17, 17, 22, 0.9); --border: rgba(139, 92, 246, 0.3); }
-        body { margin: 0; background: var(--bg); height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; color: white; overflow: hidden; }
-        .app-container { width: 900px; height: 550px; background: var(--card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 24px; display: flex; box-shadow: 0 0 50px rgba(139, 92, 246, 0.15); }
+        body { margin: 0; background: var(--bg); height: 100vh; display: flex; align-items: center; justify-content: center; font-family: -apple-system, sans-serif; color: white; overflow: hidden; }
+        .app-container { width: 950px; height: 550px; background: var(--card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 24px; display: flex; box-shadow: 0 0 50px rgba(139, 92, 246, 0.15); }
         .controls { width: 350px; padding: 40px; border-right: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; }
-        textarea { flex: 1; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); border-radius: 12px; padding: 15px; color: white; resize: none; outline: none; margin-bottom: 20px; font-size: 14px; }
-        .btn-gen { background: var(--primary); border: none; padding: 16px; border-radius: 12px; color: white; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        textarea { flex: 1; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); border-radius: 12px; padding: 15px; color: white; resize: none; outline: none; margin-bottom: 20px; font-size: 14px; line-height: 1.6; }
+        .btn-gen { background: var(--primary); border: none; padding: 16px; border-radius: 12px; color: white; font-weight: 600; cursor: pointer; transition: 0.3s; font-size: 16px; }
         .btn-gen:disabled { background: #444; cursor: not-allowed; }
         .preview { flex: 1; padding: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .video-box { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 16px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        #statusText { margin-top: 20px; font-size: 12px; color: #888; text-align: center; max-width: 100%; word-break: break-all; }
+        .video-box { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 16px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+        #statusText { margin-top: 20px; font-size: 12px; color: #888; text-align: center; width: 100%; word-break: break-all; }
         .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: none; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        video { width: 100%; height: 100%; object-fit: contain; }
     </style>
 </head>
 <body>
+
 <div class="app-container">
     <div class="controls">
-        <h2 style="color:var(--primary)">VideoFlow</h2>
-        <textarea id="promptInput" placeholder="输入主题，如：属虎人2026年运势"></textarea>
+        <h1 style="margin: 0 0 10px 0; font-size: 24px; color: var(--primary);">VideoFlow</h1>
+        <p style="color: #666; font-size: 13px; margin-bottom: 30px;">AI 工作流驱动 · 自动化生成</p>
+        <textarea id="promptInput" placeholder="请输入视频主题..."></textarea>
         <button class="btn-gen" id="runBtn" onclick="runTask()">立即生成视频</button>
     </div>
     <div class="preview">
         <div class="video-box">
             <div class="loader" id="loader"></div>
-            <video id="outputVideo" style="display:none; width:100%; height:100%" controls autoplay></video>
-            <div id="placeholderText">等待生成预览</div>
+            <video id="outputVideo" style="display:none;" controls autoplay></video>
+            <div id="placeholder" style="color:#444; text-align: center;">视频预览区域</div>
         </div>
-        <div id="statusText">系统就绪</div>
+        <div id="statusText">准备就绪</div>
     </div>
 </div>
 
@@ -42,17 +46,18 @@
         const status = document.getElementById('statusText');
         const loader = document.getElementById('loader');
         const video = document.getElementById('outputVideo');
-        const placeholder = document.getElementById('placeholderText');
+        const placeholder = document.getElementById('placeholder');
 
-        if (!prompt) return alert("请输入内容");
+        if (!prompt) return alert("内容不能为空");
 
         btn.disabled = true;
         loader.style.display = "block";
         video.style.display = "none";
         placeholder.style.display = "none";
-        status.innerText = "扣子工作流运行中（预计1分钟）...";
+        status.innerText = "扣子正在生成中，请勿刷新页面...";
 
         try {
+            // 这里我们请求 /api/run，Netlify 会根据 toml 转发
             const response = await fetch('/api/run', {
                 method: 'POST',
                 headers: {
@@ -64,16 +69,15 @@
 
             const result = await response.json();
             
-            // --- 这里的“暴力搜索”逻辑已经重写，无懈可击 ---
+            // 终极扫描：遍历所有返回字段寻找视频
             let finalUrl = "";
             const scan = (obj) => {
                 if (finalUrl) return;
                 for (let k in obj) {
-                    let v = obj[k];
-                    if (typeof v === 'string' && v.startsWith('http') && v.includes('.mp4')) {
-                        finalUrl = v; return;
+                    if (typeof obj[k] === 'string' && obj[k].startsWith('http') && obj[k].includes('.mp4')) {
+                        finalUrl = obj[k]; return;
                     }
-                    if (v && typeof v === 'object') scan(v);
+                    if (obj[k] && typeof obj[k] === 'object') scan(obj[k]);
                 }
             };
             scan(result);
@@ -83,11 +87,11 @@
                 video.style.display = "block";
                 status.innerText = "生成成功！";
             } else {
-                // 如果还是没找到，直接把扣子返回的数据喷在屏幕上调试
-                status.innerText = "未搜寻到视频，扣子返回原始数据：" + JSON.stringify(result);
+                // 如果没有视频，把扣子的回复原样展示，方便诊断
+                status.innerText = "未搜寻到视频。返回信息：" + JSON.stringify(result).substring(0, 100);
             }
         } catch (e) {
-            status.innerText = "连接被拦截或超时，请检查 Netlify 配置。";
+            status.innerText = "网络请求失败，请检查 Netlify 转发路径。";
         } finally {
             btn.disabled = false;
             loader.style.display = "none";
