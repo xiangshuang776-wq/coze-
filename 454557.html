@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Workflow Pro | AI Power</title>
+    <style>
+        :root {
+            --primary: #8B5CF6;
+            --bg: #050507;
+            --card: rgba(17, 17, 22, 0.9);
+            --border: rgba(139, 92, 246, 0.3);
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: white;
+        }
+
+        .app-container {
+            width: 900px;
+            height: 550px;
+            background: var(--card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            display: flex;
+            box-shadow: 0 0 80px rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+        }
+
+        .controls {
+            width: 350px;
+            padding: 40px;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 { font-size: 24px; margin: 0 0 10px 0; background: linear-gradient(45deg, #fff, var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        textarea {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            color: white;
+            outline: none;
+            transition: 0.3s;
+            resize: none;
+        }
+
+        textarea:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(139, 92, 246, 0.2); }
+
+        .btn-gen {
+            margin-top: 20px;
+            background: var(--primary);
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-gen:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4); }
+        .btn-gen:disabled { opacity: 0.5; cursor: wait; }
+
+        .preview {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .video-box {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #statusText { margin-top: 20px; font-size: 13px; color: var(--primary); }
+        .loader { width: 30px; height: 30px; border: 3px solid rgba(139, 92, 246, 0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="controls">
+        <h2>VideoFlow</h2>
+        <div style="color:#666; font-size:12px; margin-bottom:15px;">AI 工作流驱动</div>
+        <textarea id="promptInput" placeholder="请输入视频主题..."></textarea>
+        <button class="btn-gen" id="runBtn" onclick="runTask()">立即生成视频</button>
+    </div>
+
+    <div class="preview">
+        <div class="video-box">
+            <div class="loader" id="loader"></div>
+            <video id="outputVideo" style="display:none; width:100%;" controls></video>
+            <span id="placeholderText" style="color:#333">预览区域</span>
+        </div>
+        <div id="statusText">系统就绪</div>
+    </div>
+</div>
+
+<script>
+    async function runTask() {
+        const prompt = document.getElementById('promptInput').value;
+        const btn = document.getElementById('runBtn');
+        const status = document.getElementById('statusText');
+        const loader = document.getElementById('loader');
+        const video = document.getElementById('outputVideo');
+
+        if (!prompt) return alert("内容不能为空");
+
+        btn.disabled = true;
+        loader.style.display = "block";
+        video.style.display = "none";
+        status.innerText = "正在通过安全网关调用工作流...";
+
+        try {
+            // 注意：这里使用相对路径 /api/run，Netlify 会根据 toml 文件进行转发
+            const response = await fetch('/api/run', {
+                method: 'POST',
+                headers: {
+                    // 请确保这里的 Token 是你在教程步骤 2 获取的真实永久 Token
+                    'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjIwYjMzZDE1LTBhZTEtNDQyZC1iMmNhLTc2YzFjZjg3MWY5NyJ9.eyJpc3MiOiJodHRwczovL2FwaS5jb3plLmNuIiwiYXVkIjpbIlRROFNZdndtYlNpa0M5Rml2cGVYMjlrbHpnejNLc0FDIl0sImV4cCI6ODIxMDI2Njg3Njc5OSwiaWF0IjoxNzY5NTg4ODgyLCJzdWIiOiJzcGlmZmU6Ly9hcGkuY296ZS5jbi93b3JrbG9hZF9pZGVudGl0eS9pZDo3NTk4ODQ1NTQ5OTE1MTQ0MjExIiwic3JjIjoiaW5ib3VuZF9hdXRoX2FjY2Vzc190b2tlbl9pZDo3NjAwMzI2Mzc5NjgyMzk4MjcxIn0.kTwhqvw4n99RDDs96uyEL8vc7VfrAlbTkYGsxCA-S95YbZLDhNNBvPBXaaLU7X8NGH3ecDK3NJvp1x0VqxkQ_mByQPB9Me3OSqpDyIFfcu0XrzrJRKywDxe3Z2foGGNNp4JS-202cZ2VM9jwZjyucgSWhk1Id0P8WBFcZ9A3wQq5eiEMSIiLjQ1ffQA9lKlSuarZj8W8HC8jJhuxJAgWBFq4Z-fNM2g9iqp6Se1ubxv395XT6GgY5YzqcscdwjJmf4CAW2hKpyOu3kBJJja_bbPcemH3cgZCAe2aGyk0pXBI2ZCcv56zRaSCfBVS6XcjpiMs_KCjavbP8Jg3m7tgog',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ "topic": prompt }) // 参数名必须与工作流输入对齐
+            });
+
+            const data = await response.json();
+            
+            // 教程提到同步执行 90 秒内返回
+            // 请根据你工作流输出变量名修改此处，假设是 video_url
+            const videoUrl = data.video_url || data.data?.video_url || data.url;
+
+            if (videoUrl) {
+                video.src = videoUrl;
+                video.style.display = "block";
+                status.innerText = "生成完成！";
+            } else {
+                status.innerText = "执行成功但未识别视频地址，请检查输出节点。";
+            }
+        } catch (err) {
+            status.innerText = "连接超时或权限错误，请检查 Token。";
+        } finally {
+            btn.disabled = false;
+            loader.style.display = "none";
+        }
+    }
+</script>
+</body>
+</html>
