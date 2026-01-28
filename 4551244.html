@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Video Workflow Pro | 极简部署版</title>
+    <style>
+        :root {
+            --primary: #8B5CF6;
+            --bg: #030305;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(139, 92, 246, 0.3);
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            /* 高级感黑紫径向渐变 */
+            background-image: radial-gradient(circle at 20% 20%, #1a1033 0%, #030305 40%);
+            color: #fff;
+            font-family: 'PingFang SC', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main-card {
+            width: 850px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            display: flex;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        /* 左侧输入 */
+        .panel-left {
+            width: 320px;
+            padding: 30px;
+            border-right: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h2 { font-size: 20px; margin: 0; background: linear-gradient(to right, #fff, var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: #fff;
+            padding: 12px;
+            box-sizing: border-box;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        textarea:focus { border-color: #a78bfa; box-shadow: 0 0 10px rgba(139, 92, 246, 0.2); }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn:hover { background: #7c3aed; transform: scale(1.02); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 右侧预览 */
+        .panel-right {
+            flex: 1;
+            padding: 30px;
+            background: rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #status-bar { margin-top: 15px; font-size: 13px; color: var(--primary); }
+
+        /* 旋转动画 */
+        .loader {
+            width: 30px; height: 30px;
+            border: 3px solid rgba(139, 92, 246, 0.2);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="main-card">
+    <div class="panel-left">
+        <h2>工作流调用</h2>
+        <div style="font-size: 12px; color: #666;">PROMPT / TOPIC</div>
+        <textarea id="userInput" placeholder="输入视频主题，例如：整理今天的股市热点新闻"></textarea>
+        <button class="btn" id="startBtn" onclick="runTask()">100% 跑通生成</button>
+    </div>
+
+    <div class="panel-right">
+        <div class="video-container">
+            <div class="loader" id="loader"></div>
+            <p id="tip" style="color: #444;">等待结果...</p>
+            <video id="resVideo" style="width:100%; display:none;" controls></video>
+        </div>
+        <div id="status-bar">系统准备就绪</div>
+    </div>
+</div>
+
+<script>
+    async function runTask() {
+        const input = document.getElementById('userInput').value;
+        const btn = document.getElementById('startBtn');
+        const loader = document.getElementById('loader');
+        const tip = document.getElementById('tip');
+        const video = document.getElementById('resVideo');
+        const statusBar = document.getElementById('status-bar');
+
+        if (!input) return alert("请输入内容");
+
+        // UI 锁定
+        btn.disabled = true;
+        loader.style.display = "block";
+        tip.style.display = "none";
+        video.style.display = "none";
+        statusBar.innerText = "正在通过代理绕过跨域请求...";
+
+        // --- 核心改动：使用 cors-anywhere 代理或类似的代理服务 ---
+        // 注意：如果你有自己的服务器，这里换成你自己的后端地址
+        const proxy = "https://cors-anywhere.herokuapp.com/"; 
+        const targetUrl = "https://bkv7jpymtw.coze.site/run"; 
+
+        try {
+            const response = await fetch(proxy + targetUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjIwYjMzZDE1LTBhZTEtNDQyZC1iMmNhLTc2YzFjZjg3MWY5NyJ9...', // 你的完整Token
+                    'Content-Type': 'application/json',
+                    'x-requested-with': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ "topic": input }) // 这里的参数名要和工作流一致
+            });
+
+            const data = await response.json();
+            console.log("返回数据:", data);
+
+            // 根据教程，API 是同步执行的
+            // 我们需要根据你的工作流实际返回结构来提取视频 URL
+            // 假设你的工作流输出变量名叫 video_url
+            if (data.video_url || data.data?.video_url) {
+                video.src = data.video_url || data.data.video_url;
+                video.style.display = "block";
+                loader.style.display = "none";
+                statusBar.innerText = "生成成功！";
+            } else {
+                statusBar.innerText = "请求成功但未获取到视频，请检查输出变量名";
+                loader.style.display = "none";
+                tip.style.display = "block";
+            }
+
+        } catch (err) {
+            console.error(err);
+            statusBar.innerHTML = `<span style="color: #ff4d4f;">访问失败。请先访问 <a href="https://cors-anywhere.herokuapp.com/corsdemo" target="_blank" style="color:#fff">此处</a> 点击按钮授权临时代理。</span>`;
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
