@@ -3,3 +3,9 @@
   to = "https://tjy7y8chct.coze.site/run"
   status = 200
   force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
