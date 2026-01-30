@@ -1,66 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <title>命理动漫视频生成</title>
+    <meta charset="UTF-8">
+    <title>生肖推演</title>
     <style>
-        /* 你原本的紫色/黑色调命理风格 CSS 代码 */
+        body { font-family: sans-serif; padding: 20px; }
+        .container { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { padding: 5px; width: 200px; }
+        button { padding: 5px 15px; cursor: pointer; }
+        #result { 
+            white-space: pre-wrap; 
+            padding: 15px; 
+            border: 1px solid #eee; 
+            background: #f9f9f9; 
+            min-height: 100px;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
-    <div class="main-container">
+
+    <div class="container">
         <input type="text" id="zodiacInput" placeholder="请输入生肖">
-        <button id="generateBtn">开始推演</button>
-        <div id="videoContainer">
-            <video id="resultVideo" controls style="display:none;"></video>
-        </div>
+        <button id="runBtn">开始推演</button>
     </div>
 
+    <div id="result">结果将在这里显示...</div>
+
     <script>
-        // 2. 核心逻辑：精准替换管道，不动你的交互逻辑
-        document.getElementById('generateBtn').onclick = async function() {
-            const zodiac = document.getElementById('zodiacInput').value;
-            const btn = this;
-            
-            if (!zodiac) return alert("大师提示：请先输入生肖！");
+        const runBtn = document.getElementById('runBtn');
+        const zodiacInput = document.getElementById('zodiacInput');
+        const resultDiv = document.getElementById('result');
 
-            // 状态锁定
-            btn.innerText = "推演中...";
-            btn.disabled = true;
+        // 你的专属 Token
+        const TOKEN = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjhmNTU2YTNkLWNkMDItNDQ0Zi05ZTBkLTI0NTU0ZTVkYmYyZCJ9.eyJpc3MiOiJodHRwczovL2FwaS5jb3plLmNuIiwiYXVkIjpbIkdWUGRGRGhTZEJGMnZ2VGlWc1hhTmNyamdoMzZ1Y3JLIl0sImV4cCI6ODIxMDI2Njg3Njc5OSwiaWF0IjoxNzY5Nzk5NDUwLCJzdWIiOiJzcGlmZmU6Ly9hcGkuY296ZS5jbi93b3JrbG9hZF9pZGVudGl0eS9pZDo3NjAxMTM1MjYyNDIwMTcyODM2Iiwic3JjIjoiaW5ib3VuZF9hdXRoX2FjY2Vzc190b2tlbl9pZDo3NjAxMjMwNzYwODIwODY3MTA4In0.PaeHNixndF7hmhPvLWKLSjn7yDjGymvm_O39J6w2RoqBOiKRKJ5-NPS8NfN9LYmdtpWHH5tCSCZ_Q4EmBUSxUr0LEquOCmvCs_uUgDGvsVRuvefsrnqDzhC0vBg6ol_zAyPUpSQ2RHP8UujOiEiremsRaJrvU6sXxD7VAgxS7k_ivLGiZkjy9I0NNpZ5g2KmJIAQj2k81m5puNMKESL-HXev2J-kErDXHNJCuNYl3TdBBD9NjKZZEL-q2gNe5N6EvwzEpuGCpIuYQo4HeRSkiwwZV-aS2_rqRIAymTcEc_XEhzN2tchHeEIsoLUwy-SvoYDeOfFKHW9fA4rVWiqLQg";
 
-            // 这里是你刚才给我的最新令牌，已经帮你填好了
-            const JWT_TOKEN = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjhmNTU2YTNkLWNkMDItNDQ0Zi05ZTBkLTI0NTU0ZTVkYmYyZCJ9.eyJpc3MiOiJodHRwczovL2FwaS5jb3plLmNuIiwiYXVkIjpbIkdWUGRGRGhTZEJGMnZ2VGlWc1hhTmNyamdoMzZ1Y3JLIl0sImV4cCI6ODIxMDI2Njg3Njc5OSwiaWF0IjoxNzY5Nzk5NDUwLCJzdWIiOiJzcGlmZmU6Ly9hcGkuY296ZS5jbi93b3JrbG9hZF9pZGVudGl0eS9pZDo3NjAxMTM1MjYyNDIwMTcyODM2Iiwic3JjIjoiaW5ib3VuZF9hdXRoX2FjY2Vzc190b2tlbl9pZDo3NjAxMjMwNzYwODIwODY3MTA4In0.PaeHNixndF7hmhPvLWKLSjn7yDjGymvm_O39J6w2RoqBOiKRKJ5-NPS8NfN9LYmdtpWHH5tCSCZ_Q4EmBUSxUr0LEquOCmvCs_uUgDGvsVRuvefsrnqDzhC0vBg6ol_zAyPUpSQ2RHP8UujOiEiremsRaJrvU6sXxD7VAgxS7k_ivLGiZkjy9I0NNpZ5g2KmJIAQj2k81m5puNMKESL-HXev2J-kErDXHNJCuNYl3TdBBD9NjKZZEL-q2gNe5N6EvwzEpuGCpIuYQo4HeRSkiwwZV-aS2_rqRIAymTcEc_XEhzN2tchHeEIsoLUwy-SvoYDeOfFKHW9fA4rVWiqLQg";
+        runBtn.onclick = async () => {
+            const val = zodiacInput.value.trim();
+            if (!val) {
+                alert("请输入内容");
+                return;
+            }
+
+            runBtn.disabled = true;
+            resultDiv.innerText = "正在推演中，请稍候...";
 
             try {
-                // 注意：这里必须请求 '/api/run'，配合 netlify.toml 才能穿透跨域
                 const response = await fetch('/api/run', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${JWT_TOKEN}`,
+                        'Authorization': `Bearer ${TOKEN}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ "zodiac": zodiac })
+                    body: JSON.stringify({
+                        "zodiac": val
+                    })
                 });
 
-                const result = await response.json();
+                const data = await response.json();
                 
-                // 3. 结果解析逻辑：对应你 30s 视频合并后的输出变量
-                // 假设工作流 End 节点输出的键叫 data.video_url 或 data.final_video_url
-                const videoUrl = result.data?.video_url || result.data?.final_video_url;
+                // 根据 Coze 返回的结构显示结果，通常是 data.data 或 data.msg
+                // 如果是工作流，通常结果在 data 字段中
+                resultDiv.innerText = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
 
-                if (videoUrl) {
-                    const videoTag = document.getElementById('resultVideo');
-                    videoTag.src = videoUrl;
-                    videoTag.style.display = 'block';
-                    btn.innerText = "推演成功";
-                } else {
-                    alert("推演失败，请检查工作流输出变量名是否对齐。");
-                    btn.innerText = "重新推演";
-                }
-            } catch (err) {
-                console.error(err);
-                alert("连通大师失败，请确认 netlify.toml 已经更新！");
+            } catch (error) {
+                resultDiv.innerText = "错误: " + error.message;
             } finally {
-                btn.disabled = false;
+                runBtn.disabled = false;
             }
         };
     </script>
