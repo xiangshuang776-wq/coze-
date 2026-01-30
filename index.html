@@ -2,96 +2,97 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>VideoFlow Pro | 稳定版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台湾命理动漫视频生成器</title>
     <style>
-        :root { --primary: #8B5CF6; --bg: #050507; --card: rgba(17, 17, 22, 0.9); --border: rgba(139, 92, 246, 0.3); }
-        body { margin: 0; background: var(--bg); height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; color: white; overflow: hidden; }
-        .app-container { width: 900px; height: 550px; background: var(--card); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: 24px; display: flex; box-shadow: 0 0 50px rgba(139, 92, 246, 0.2); }
-        .controls { width: 350px; padding: 40px; border-right: 1px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; }
-        textarea { flex: 1; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border); border-radius: 12px; padding: 15px; color: white; resize: none; outline: none; margin-bottom: 20px; font-size: 14px; }
-        .btn-gen { background: var(--primary); border: none; padding: 16px; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; }
-        .btn-gen:disabled { background: #444; cursor: not-allowed; }
-        .preview { flex: 1; padding: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .video-box { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 16px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        #statusText { margin-top: 20px; font-size: 12px; color: #888; text-align: center; max-width: 100%; word-break: break-all; }
-        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: none; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        body { font-family: 'PingFang SC', sans-serif; background: #1a1a2e; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { background: #16213e; padding: 30px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.5); width: 100%; max-width: 500px; text-align: center; }
+        h1 { color: #e94560; margin-bottom: 20px; }
+        input { width: 80%; padding: 12px; border-radius: 5px; border: none; margin-bottom: 20px; font-size: 16px; }
+        button { background: #e94560; color: white; border: none; padding: 12px 30px; border-radius: 5px; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        button:hover { background: #ff4d6d; }
+        button:disabled { background: #555; cursor: not-allowed; }
+        #result { margin-top: 30px; display: none; }
+        video { width: 100%; border-radius: 10px; border: 2px solid #e94560; }
+        .loading { display: none; color: #f9d423; margin: 20px 0; }
+        .master-msg { font-style: italic; color: #00d2ff; margin-bottom: 15px; }
     </style>
 </head>
 <body>
-<div class="app-container">
-    <div class="controls">
-        <h2 style="color:var(--primary)">VideoFlow</h2>
-        <textarea id="promptInput" placeholder="请输入视频主题..."></textarea>
-        <button class="btn-gen" id="runBtn" onclick="runTask()">立即生成视频</button>
-    </div>
-    <div class="preview">
-        <div class="video-box">
-            <div class="loader" id="loader"></div>
-            <video id="outputVideo" style="display:none; width:100%; height:100%" controls autoplay></video>
-            <div id="placeholder">🎬 视频生成区域</div>
-        </div>
-        <div id="statusText">准备就绪</div>
+
+<div class="container">
+    <h1>命理动漫·自动排盘</h1>
+    <div class="master-msg">“输入生肖，老师为你一键推演 30 秒开运天机。”</div>
+    
+    <input type="text" id="zodiacInput" placeholder="请输入生肖（如：龙）">
+    <br>
+    <button id="runBtn" onclick="runWorkflow()">开始推演</button>
+
+    <div id="loading" class="loading">大师正在闭关赶制视频（由于是6段合成，预计需1-3分钟），请勿关闭窗口...</div>
+
+    <div id="result">
+        <h3>推演结果已出：</h3>
+        <video id="outputVideo" controls></video>
+        <br>
+        <p><a id="videoLink" href="#" target="_blank" style="color: #00d2ff;">[ 点击下载原视频 ]</a></p>
     </div>
 </div>
 
 <script>
-    async function runTask() {
-        const prompt = document.getElementById('promptInput').value;
+    async function runWorkflow() {
+        const zodiac = document.getElementById('zodiacInput').value;
         const btn = document.getElementById('runBtn');
-        const status = document.getElementById('statusText');
-        const loader = document.getElementById('loader');
+        const loading = document.getElementById('loading');
+        const resultDiv = document.getElementById('result');
         const video = document.getElementById('outputVideo');
-        const placeholder = document.getElementById('placeholder');
+        const link = document.getElementById('videoLink');
 
-        if (!prompt) return alert("请输入主题");
+        if (!zodiac) {
+            alert("请先输入生肖，老师才好为你推演哦！");
+            return;
+        }
 
+        // 状态更新
         btn.disabled = true;
-        loader.style.display = "block";
-        video.style.display = "none";
-        placeholder.style.display = "none";
-        status.innerText = "扣子工作流正在运行，大约需要60秒...";
+        loading.style.display = 'block';
+        resultDiv.style.display = 'none';
+
+        // 核心配置：使用你刚才发给我的 API 和 Token
+        const apiUrl = 'https://tjy7y8chct.coze.site/run';
+        const token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjhmNTU2YTNkLWNkMDItNDQ0Zi05ZTBkLTI0NTU0ZTVkYmYyZCJ9.eyJpc3MiOiJodHRwczovL2FwaS5jb3plLmNuIiwiYXVkIjpbIkdWUGRGRGhTZEJGMnZ2VGlWc1hhTmNyamdoMzZ1Y3JLIl0sImV4cCI6ODIxMDI2Njg3Njc5OSwiaWF0IjoxNzY5Nzk5NDUwLCJzdWIiOiJzcGlmZmU6Ly9hcGkuY296ZS5jbi93b3JrbG9hZF9pZGVudGl0eS9pZDo3NjAxMTM1MjYyNDIwMTcyODM2Iiwic3JjIjoiaW5ib3VuZF9hdXRoX2FjY2Vzc190b2tlbl9pZDo3NjAxMjMwNzYwODIwODY3MTA4In0.PaeHNixndF7hmhPvLWKLSjn7yDjGymvm_O39J6w2RoqBOiKRKJ5-NPS8NfN9LYmdtpWHH5tCSCZ_Q4EmBUSxUr0LEquOCmvCs_uUgDGvsVRuvefsrnqDzhC0vBg6ol_zAyPUpSQ2RHP8UujOiEiremsRaJrvU6sXxD7VAgxS7k_ivLGiZkjy9I0NNpZ5g2KmJIAQj2k81m5puNMKESL-HXev2J-kErDXHNJCuNYl3TdBBD9NjKZZEL-q2gNe5N6EvwzEpuGCpIuYQo4HeRSkiwwZV-aS2_rqRIAymTcEc_XEhzN2tchHeEIsoLUwy-SvoYDeOfFKHW9fA4rVWiqLQg';
 
         try {
-            // 修正后的请求路径，严格对应 netlify.toml
-            const response = await fetch('/api/run', {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
-                    'Authorization': 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjIwYjMzZDE1LTBhZTEtNDQyZC1iMmNhLTc2YzFjZjg3MWY5NyJ9.eyJpc3MiOiJodHRwczovL2FwaS5jb3plLmNuIiwiYXVkIjpbIlRROFNZdndtYlNpa0M5Rml2cGVYMjlrbHpnejNLc0FDIl0sImV4cCI6ODIxMDI2Njg3Njc5OSwiaWF0IjoxNzY5NTg4ODgyLCJzdWIiOiJzcGlmZmU6Ly9hcGkuY296ZS5jbi93b3JrbG9hZF9pZGVudGl0eS9pZDo3NTk4ODQ1NTQ5OTE1MTQ0MjExIiwic3JjIjoiaW5ib3VuZF9hdXRoX2FjY2Vzc190b2tlbl9pZDo3NjAwMzI2Mzc5NjgyMzk4MjcxIn0.kTwhqvw4n99RDDs96uyEL8vc7VfrAlbTkYGsxCA-S95YbZLDhNNBvPBXaaLU7X8NGH3ecDK3NJvp1x0VqxkQ_mByQPB9Me3OSqpDyIFfcu0XrzrJRKywDxe3Z2foGGNNp4JS-202cZ2VM9jwZjyucgSWhk1Id0P8WBFcZ9A3wQq5eiEMSIiLjQ1ffQA9lKlSuarZj8W8HC8jJhuxJAgWBFq4Z-fNM2g9iqp6Se1ubxv395XT6GgY5YzqcscdwjJmf4CAW2hKpyOu3kBJJja_bbPcemH3cgZCAe2aGyk0pXBI2ZCcv56zRaSCfBVS6XcjpiMs_KCjavbP8Jg3m7tgog',
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ "topic": prompt })
+                body: JSON.stringify({ "zodiac": zodiac })
             });
 
-            const result = await response.json();
-            
-            // 终极兼容性视频提取
-            let finalUrl = "";
-            const scan = (obj) => {
-                if (finalUrl) return;
-                for (let k in obj) {
-                    if (typeof obj[k] === 'string' && obj[k].startsWith('http') && obj[k].includes('.mp4')) {
-                        finalUrl = obj[k]; return;
-                    }
-                    if (obj[k] && typeof obj[k] === 'object') scan(obj[k]);
-                }
-            };
-            scan(result);
+            const data = await response.json();
+
+            // 解析逻辑：假设工作流返回的视频地址在 data.video_url 里
+            // 如果你的工作流变量名不同，请修改此处
+            const finalUrl = data.data?.video_url || data.video_url || data.data?.final_video_url;
 
             if (finalUrl) {
                 video.src = finalUrl;
-                video.style.display = "block";
-                status.innerText = "生成成功！";
+                link.href = finalUrl;
+                resultDiv.style.display = 'block';
             } else {
-                status.innerText = "数据获取成功但没找到视频。返回内容：" + JSON.stringify(result).substring(0, 100);
+                alert("视频生成失败，请检查工作流输出设置或稍后再试。");
             }
-        } catch (e) {
-            status.innerText = "网络异常：请确认 netlify.toml 规则已正确发布并部署。";
+        } catch (error) {
+            console.error('Error:', error);
+            alert("连接大师失败（网络超时），请检查 API 是否开启异步模式。");
         } finally {
             btn.disabled = false;
-            loader.style.display = "none";
+            loading.style.display = 'none';
         }
     }
 </script>
+
 </body>
 </html>
